@@ -40,7 +40,7 @@ class FirstFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
 
         binding.buttonFirst.setOnClickListener {
-            findNavController().navigate(R.id.action_FirstFragment_to_SecondFragment)
+            findNavController().navigate(R.id.action_FirstFragment_to_ChatView)
         }
 
         binding.buttonToFirestore.setOnClickListener {
@@ -96,9 +96,24 @@ class FirstFragment : Fragment() {
                 Log.w(TAG, "Error getting documents.", exception)
             }
 
-
-
     }
+
+    private fun getRealTimeDataFirestore(){
+        val docRef = db.collection("users").document("SF")
+        docRef.addSnapshotListener { snapshot, e ->
+            if (e != null) {
+                Log.w(TAG, "Listen failed.", e)
+                return@addSnapshotListener
+            }
+
+            if (snapshot != null && snapshot.exists()) {
+                Log.d(TAG, "Current data: ${snapshot.data}")
+            } else {
+                Log.d(TAG, "Current data: null")
+            }
+        }
+    }
+
 
 
 }
