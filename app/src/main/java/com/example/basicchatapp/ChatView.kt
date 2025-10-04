@@ -14,10 +14,15 @@ import androidx.recyclerview.widget.RecyclerView
 import com.google.firebase.Firebase
 import com.google.firebase.firestore.DocumentChange
 import com.google.firebase.firestore.firestore
+import com.google.firebase.auth.FirebaseAuth
 
 class ChatView : Fragment() {
 
+    // firebase stuff
     private val db = Firebase.firestore
+    val currentUser = FirebaseAuth.getInstance().currentUser
+    val uid = currentUser?.uid
+
     private lateinit var recyclerMessages: RecyclerView
     private lateinit var editMessage: EditText
     private lateinit var buttonSend: ImageButton
@@ -75,7 +80,7 @@ class ChatView : Fragment() {
     private fun sendMessage(text: String) {
         val message = hashMapOf(
             "text" to text,
-            "sender" to "user123",   // later: replace with FirebaseAuth user
+            "sender" to uid,
             "timestamp" to System.currentTimeMillis()
         )
 
@@ -164,4 +169,8 @@ class ChatView : Fragment() {
             }
         }
     }
+}
+
+fun getChatRoomId(user1: String, user2: String): String {
+    return if (user1 < user2) "${user1}_${user2}" else "${user2}_${user1}"
 }

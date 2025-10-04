@@ -8,12 +8,17 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import com.example.basicchatapp.databinding.ActivitySignUpBinding
+import com.google.firebase.Firebase
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.firestore
 
 class SignUpActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivitySignUpBinding
     private lateinit var firebaseAuth: FirebaseAuth
+
+    private val db = Firebase.firestore
+
 
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -40,6 +45,18 @@ class SignUpActivity : AppCompatActivity() {
                     if(it.isSuccessful){
                         val intent = Intent(this, SignInActivity::class.java)
                         startActivity(intent)
+
+                        //to save the user
+                        val currentUser = FirebaseAuth.getInstance().currentUser
+                        if (currentUser != null) {
+                            val user = hashMapOf(
+                                "uid" to currentUser.uid,
+                                "first" to currentUser.displayName,
+                                "email" to currentUser.email
+                            )
+                            db.collection("users").document(currentUser.uid).set(user)
+                        }
+
                     }else{
                         Toast.makeText(this, it.exception.toString(), Toast.LENGTH_SHORT).show()
                     }
