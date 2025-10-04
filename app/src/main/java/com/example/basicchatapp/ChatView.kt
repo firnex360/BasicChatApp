@@ -61,6 +61,16 @@ class ChatView : Fragment() {
         return view
     }
 
+    override fun onResume() {
+        super.onResume()
+        // Ensure proper layout when fragment resumes
+        view?.post {
+            if (chatAdapter.itemCount > 0) {
+                recyclerMessages.scrollToPosition(chatAdapter.itemCount - 1)
+            }
+        }
+    }
+
     // Send a message to Firestore
     private fun sendMessage(text: String) {
         val message = hashMapOf(
@@ -107,17 +117,25 @@ class ChatView : Fragment() {
     
     // Set up keyboard detection to ensure input field is visible
     private fun setupKeyboardDetection(rootView: View) {
-        rootView.viewTreeObserver.addOnGlobalLayoutListener(object : ViewTreeObserver.OnGlobalLayoutListener {
+        val activityRootView = requireActivity().findViewById<View>(android.R.id.content)
+        
+        activityRootView.viewTreeObserver.addOnGlobalLayoutListener(object : ViewTreeObserver.OnGlobalLayoutListener {
             override fun onGlobalLayout() {
-                val heightDiff = rootView.rootView.height - rootView.height
-                val isKeyboardOpen = heightDiff > rootView.rootView.height * 0.15
+                val heightDiff = activityRootView.rootView.height - activityRootView.height
+                val isKeyboardOpen = heightDiff > activityRootView.rootView.height * 0.15
 
                 if (isKeyboardOpen && !isKeyboardShowing) {
                     // Keyboard opened
                     isKeyboardShowing = true
                     // Scroll to bottom to show the latest message and input field
-                    if (chatAdapter.itemCount > 0) {
-                        recyclerMessages.scrollToPosition(chatAdapter.itemCount - 1)
+                    recyclerMessages.post {
+                        if (chatAdapter.itemCount > 0) {
+                            recyclerMessages.scrollToPosition(chatAdapter.itemCount - 1)
+                        }
+                        // Ensure the EditText is visible
+                        editMessage.post {
+                            editMessage.requestFocus()
+                        }
                     }
                 } else if (!isKeyboardOpen && isKeyboardShowing) {
                     // Keyboard closed
@@ -128,8 +146,19 @@ class ChatView : Fragment() {
 
         // When user focuses on the input field, scroll to bottom
         editMessage.setOnFocusChangeListener { _, hasFocus ->
-            if (hasFocus && chatAdapter.itemCount > 0) {
+            if (hasFocus) {
                 recyclerMessages.post {
+                    if (chatAdapter.itemCount > 0) {
+                        recyclerMessages.scrollToPosition(chatAdapter.itemCount - 1)
+                    }
+                }
+            }
+        }
+        
+        // Additional handling for when EditText is touched
+        editMessage.setOnClickListener {
+            recyclerMessages.post {
+                if (chatAdapter.itemCount > 0) {
                     recyclerMessages.scrollToPosition(chatAdapter.itemCount - 1)
                 }
             }

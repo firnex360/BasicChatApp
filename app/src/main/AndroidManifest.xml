@@ -12,7 +12,8 @@
         android:theme="@style/Theme.BasicChatApp">
         <activity
             android:name=".MainActivity"
-            android:exported="true" />
+            android:exported="true"
+            android:windowSoftInputMode="adjustPan" />
         <activity
             android:name=".SignInActivity"
             android:exported="false" />
