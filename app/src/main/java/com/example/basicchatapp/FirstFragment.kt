@@ -8,112 +8,55 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.navigation.fragment.findNavController
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
 import com.example.basicchatapp.databinding.FragmentFirstBinding
 import com.google.firebase.Firebase
 import com.google.firebase.firestore.firestore
 
-/**
- * A simple [Fragment] subclass as the default destination in the navigation.
- */
 class FirstFragment : Fragment() {
 
-    private var _binding: FragmentFirstBinding? = null
-
-    // This property is only valid between onCreateView and
-    // onDestroyView.
-    private val binding get() = _binding!!
+    private lateinit var recyclerUsers: RecyclerView
+    private lateinit var userAdapter: UserAdapter
+    private val users = mutableListOf<User>()
 
     private val db = Firebase.firestore
-
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
-
-        _binding = FragmentFirstBinding.inflate(inflater, container, false)
-        return binding.root
-
+        return inflater.inflate(R.layout.fragment_first, container, false)
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        binding.buttonFirst.setOnClickListener {
-            findNavController().navigate(R.id.action_FirstFragment_to_ChatView)
-        }
+        recyclerUsers = view.findViewById(R.id.recyclerUsers)
+        recyclerUsers.layoutManager = LinearLayoutManager(requireContext())
 
-        binding.buttonToFirestore.setOnClickListener {
-            addDataToFirestore()
-        }
-
-        binding.buttonToFirestoreGet.setOnClickListener {
-            getDataFromFirestore()
-        }
-    }
-
-    override fun onDestroyView() {
-        super.onDestroyView()
-        _binding = null
-    }
-
-    private fun addDataToFirestore() {
-        // Create a new user with a first and last name
-        val user = hashMapOf(
-            "first" to "Ada",
-            "last" to "Lovelace",
-            "born" to 1815,
-            "time" to System.currentTimeMillis()
-        )
-
-        // Add a new document with a generated ID
-        db.collection("users")
-            .add(user)
-            .addOnSuccessListener { documentReference ->
-                Log.d(TAG, "DocumentSnapshot added with ID: ${documentReference.id}")
+        userAdapter = UserAdapter(users) { user ->
+            // On click user → open chat
+            val bundle = Bundle().apply {
+                putString("receiverUid", user.uid)
             }
-            .addOnFailureListener { e ->
-                Log.w(TAG, "Error adding document", e)
-            }
+            findNavController().navigate(R.id.action_FirstFragment_to_ChatView, bundle)
+        }
+        recyclerUsers.adapter = userAdapter
+
+        loadUsers()
     }
 
-    private fun getDataFromFirestore(){
-
+    private fun loadUsers() {
         db.collection("users")
             .get()
             .addOnSuccessListener { result ->
-                for (document in result) {
-                    val userDoc = document.data
-                    val firstName = userDoc["first"]
-                    val lastName = userDoc["last"]
-                    val time = userDoc["time"]
-
-                    binding.textviewFirst.text = "Document: $firstName $lastName $time"
-
+                users.clear()
+                for (doc in result) {
+                    val user = doc.toObject(User::class.java)
+                    users.add(user)
                 }
+                userAdapter.notifyDataSetChanged()
             }
-            .addOnFailureListener { exception ->
-                Log.w(TAG, "Error getting documents.", exception)
-            }
-
     }
-
-    private fun getRealTimeDataFirestore(){
-        val docRef = db.collection("users").document("SF")
-        docRef.addSnapshotListener { snapshot, e ->
-            if (e != null) {
-                Log.w(TAG, "Listen failed.", e)
-                return@addSnapshotListener
-            }
-
-            if (snapshot != null && snapshot.exists()) {
-                Log.d(TAG, "Current data: ${snapshot.data}")
-            } else {
-                Log.d(TAG, "Current data: null")
-            }
-        }
-    }
-
-
-
 }

@@ -51,7 +51,7 @@ class SignUpActivity : AppCompatActivity() {
                         if (currentUser != null) {
                             val user = hashMapOf(
                                 "uid" to currentUser.uid,
-                                "first" to currentUser.displayName,
+                                "first" to (currentUser.displayName ?: currentUser.email),
                                 "email" to currentUser.email
                             )
                             db.collection("users").document(currentUser.uid).set(user)

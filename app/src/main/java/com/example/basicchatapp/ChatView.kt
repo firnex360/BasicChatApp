@@ -28,7 +28,8 @@ class ChatView : Fragment() {
     private lateinit var buttonSend: ImageButton
     private lateinit var chatAdapter: ChatAdapter
 
-    private val chatRoomId = "general" // a fixed chat room for now
+    private val chatRoomId = "general" //a fixed chat room for now, use "getChatRoomId" in production
+    private var receiverUid: String? = null
     
     private var isKeyboardShowing = false
 
@@ -64,6 +65,11 @@ class ChatView : Fragment() {
         setupKeyboardDetection(view)
 
         return view
+    }
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        receiverUid = arguments?.getString("receiverUid")
     }
 
     override fun onResume() {
