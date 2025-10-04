@@ -5,6 +5,7 @@ import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.view.ViewTreeObserver
 import android.widget.EditText
 import android.widget.ImageButton
 import androidx.fragment.app.Fragment
@@ -23,6 +24,8 @@ class ChatView : Fragment() {
     private lateinit var chatAdapter: ChatAdapter
 
     private val chatRoomId = "general" // a fixed chat room for now
+    
+    private var isKeyboardShowing = false
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -51,6 +54,9 @@ class ChatView : Fragment() {
 
         // Start listening for new messages
         listenForMessages()
+        
+        // Set up keyboard detection to scroll to bottom when keyboard appears
+        setupKeyboardDetection(view)
 
         return view
     }
@@ -97,5 +103,36 @@ class ChatView : Fragment() {
                     }
                 }
             }
+    }
+    
+    // Set up keyboard detection to ensure input field is visible
+    private fun setupKeyboardDetection(rootView: View) {
+        rootView.viewTreeObserver.addOnGlobalLayoutListener(object : ViewTreeObserver.OnGlobalLayoutListener {
+            override fun onGlobalLayout() {
+                val heightDiff = rootView.rootView.height - rootView.height
+                val isKeyboardOpen = heightDiff > rootView.rootView.height * 0.15
+
+                if (isKeyboardOpen && !isKeyboardShowing) {
+                    // Keyboard opened
+                    isKeyboardShowing = true
+                    // Scroll to bottom to show the latest message and input field
+                    if (chatAdapter.itemCount > 0) {
+                        recyclerMessages.scrollToPosition(chatAdapter.itemCount - 1)
+                    }
+                } else if (!isKeyboardOpen && isKeyboardShowing) {
+                    // Keyboard closed
+                    isKeyboardShowing = false
+                }
+            }
+        })
+
+        // When user focuses on the input field, scroll to bottom
+        editMessage.setOnFocusChangeListener { _, hasFocus ->
+            if (hasFocus && chatAdapter.itemCount > 0) {
+                recyclerMessages.post {
+                    recyclerMessages.scrollToPosition(chatAdapter.itemCount - 1)
+                }
+            }
+        }
     }
 }

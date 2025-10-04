@@ -11,13 +11,13 @@ class ChatAdapter(private val messages: MutableList<ChatMessage>) :
 
     // Each row (message bubble) in the RecyclerView will be represented by this ViewHolder
     inner class MessageViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
-        val textMessage: TextView = itemView.findViewById(R.id.editMessage)
+        val textMessage: TextView = itemView.findViewById(R.id.textMessage)
     }
 
-    // Create a new ViewHolder (inflate the XML for a message bubble)
+    // Create a new ViewHolder (inflate the XML for a single message bubble)
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): MessageViewHolder {
         val view = LayoutInflater.from(parent.context)
-            .inflate(R.layout.fragment_chat_view, parent, false)
+            .inflate(R.layout.item_message_sent, parent, false)
         return MessageViewHolder(view)
     }
 
