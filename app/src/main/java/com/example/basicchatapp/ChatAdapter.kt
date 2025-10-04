@@ -9,7 +9,7 @@ import com.google.firebase.auth.FirebaseAuth
 import java.text.SimpleDateFormat
 import java.util.*
 
-class ChatAdapter(private val messages: MutableList<ChatMessage>) :
+class ChatAdapter(val messages: MutableList<ChatMessage>) :
     RecyclerView.Adapter<RecyclerView.ViewHolder>() {
 
     private val currentUserUid = FirebaseAuth.getInstance().currentUser?.uid
@@ -49,7 +49,8 @@ class ChatAdapter(private val messages: MutableList<ChatMessage>) :
     override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
         val message = messages[position]
         val formattedTime = timeFormatter.format(Date(message.timestamp))
-        val name = shortenName(message.senderName)
+        val name = message.senderName?.let { shortenName(it) } ?:
+        if (message.sender == currentUserUid) "You" else "Unknown"
 
         if (holder is SentMessageViewHolder) {
             holder.textSenderName.text = name
@@ -69,8 +70,7 @@ class ChatAdapter(private val messages: MutableList<ChatMessage>) :
         notifyItemInserted(messages.size - 1)
     }
 
-    // Shortens names longer than 10 chars
     private fun shortenName(name: String): String {
-        return if (name.length > 10) name.take(10) + "..." else name
+        return if (name.length > 10) name.take(10) + "…" else name
     }
 }

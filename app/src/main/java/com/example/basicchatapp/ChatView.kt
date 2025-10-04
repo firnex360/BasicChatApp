@@ -20,35 +20,26 @@ import com.google.firebase.firestore.firestore
 
 class ChatView : Fragment() {
 
-    // Firebase
     private val db = Firebase.firestore
     private val currentUser = FirebaseAuth.getInstance().currentUser
     private val senderUid = currentUser?.uid
 
-    // UI
     private lateinit var recyclerMessages: RecyclerView
     private lateinit var editMessage: EditText
     private lateinit var buttonSend: ImageButton
     private lateinit var chatAdapter: ChatAdapter
 
-    // Receiver data
     private var receiverUid: String? = null
     private var chatRoomId: String? = null
+    private val currentName = currentUser?.displayName ?: "You"
 
-    // Sender data
-    private val currentName = currentUser?.displayName ?: "Unknown"
-
-    // Keyboard state
     private var isKeyboardShowing = false
-
-    // Store previous toolbar title
     private var previousTitle: CharSequence? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         receiverUid = arguments?.getString("receiverUid")
 
-        // Generate a unique chat room id (sender + receiver)
         if (senderUid != null && receiverUid != null) {
             chatRoomId = getChatRoomId(senderUid, receiverUid!!)
         } else {
@@ -86,14 +77,11 @@ class ChatView : Fragment() {
         (activity as AppCompatActivity).supportActionBar?.title = "Unknown"
 
         receiverUid?.let { uid ->
-            db.collection("users")
-                .document(uid)
+            db.collection("users").document(uid)
                 .get()
                 .addOnSuccessListener { doc ->
                     val fullName = doc.getString("first") ?: "Unknown"
-
-                    //shortens the name
-                    val displayName = if (fullName.length > 10) fullName.take(10) + "…" else fullName
+                    val displayName = if (fullName.length > 15) fullName.take(15) + "…" else fullName
                     (activity as AppCompatActivity).supportActionBar?.title = displayName
                 }
                 .addOnFailureListener { e ->
@@ -106,11 +94,9 @@ class ChatView : Fragment() {
 
     override fun onDestroyView() {
         super.onDestroyView()
-        // Restore previous toolbar title when leaving this fragment
         (activity as AppCompatActivity).supportActionBar?.title = previousTitle
     }
 
-    // Send message to Firestore
     private fun sendMessage(text: String) {
         if (chatRoomId == null || senderUid == null || receiverUid == null) {
             Log.w("ChatView", "Missing chatRoomId, senderUid or receiverUid")
@@ -137,7 +123,6 @@ class ChatView : Fragment() {
             }
     }
 
-    // Listen in real-time for messages between these 2 users
     private fun listenForMessages() {
         if (chatRoomId == null) return
 
@@ -154,6 +139,17 @@ class ChatView : Fragment() {
                 snapshots?.documentChanges?.forEach { docChange ->
                     if (docChange.type == DocumentChange.Type.ADDED) {
                         val message = docChange.document.toObject(ChatMessage::class.java)
+
+                        // Ensure senderName is set; fetch from Firestore if missing
+                        if (message.senderName.isEmpty() && message.sender != null) {
+                            db.collection("users").document(message.sender!!)
+                                .get()
+                                .addOnSuccessListener { doc ->
+                                    message.senderName = doc.getString("first") ?: "Unknown"
+                                    chatAdapter.notifyItemChanged(chatAdapter.messages.indexOf(message))
+                                }
+                        }
+
                         chatAdapter.addMessage(message)
                         recyclerMessages.scrollToPosition(chatAdapter.itemCount - 1)
                     }
@@ -161,7 +157,6 @@ class ChatView : Fragment() {
             }
     }
 
-    // Scrolls when keyboard appears
     private fun setupKeyboardDetection(rootView: View) {
         val activityRootView = requireActivity().findViewById<View>(android.R.id.content)
 
@@ -184,7 +179,6 @@ class ChatView : Fragment() {
     }
 }
 
-// Generates a unique chatRoom ID for any two users
 fun getChatRoomId(user1: String, user2: String): String {
     return if (user1 < user2) "${user1}_${user2}" else "${user2}_${user1}"
 }
