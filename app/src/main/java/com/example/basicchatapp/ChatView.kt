@@ -8,30 +8,53 @@ import android.view.ViewGroup
 import android.view.ViewTreeObserver
 import android.widget.EditText
 import android.widget.ImageButton
+import androidx.appcompat.app.AppCompatActivity
 import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.firebase.Firebase
+import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.DocumentChange
 import com.google.firebase.firestore.firestore
-import com.google.firebase.auth.FirebaseAuth
+
 
 class ChatView : Fragment() {
 
-    // firebase stuff
+    // Firebase
     private val db = Firebase.firestore
-    val currentUser = FirebaseAuth.getInstance().currentUser
-    val uid = currentUser?.uid
+    private val currentUser = FirebaseAuth.getInstance().currentUser
+    private val senderUid = currentUser?.uid
 
+    // UI
     private lateinit var recyclerMessages: RecyclerView
     private lateinit var editMessage: EditText
     private lateinit var buttonSend: ImageButton
     private lateinit var chatAdapter: ChatAdapter
 
-    private val chatRoomId = "general" //a fixed chat room for now, use "getChatRoomId" in production
+    // Receiver data
     private var receiverUid: String? = null
-    
+    private var chatRoomId: String? = null
+
+    // Sender data
+    private val currentName = currentUser?.displayName ?: "Unknown"
+
+    // Keyboard state
     private var isKeyboardShowing = false
+
+    // Store previous toolbar title
+    private var previousTitle: CharSequence? = null
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        receiverUid = arguments?.getString("receiverUid")
+
+        // Generate a unique chat room id (sender + receiver)
+        if (senderUid != null && receiverUid != null) {
+            chatRoomId = getChatRoomId(senderUid, receiverUid!!)
+        } else {
+            Log.e("ChatView", "Missing sender or receiver UID")
+        }
+    }
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -39,17 +62,14 @@ class ChatView : Fragment() {
     ): View? {
         val view = inflater.inflate(R.layout.fragment_chat_view, container, false)
 
-        // link UI components
         recyclerMessages = view.findViewById(R.id.recyclerMessages)
         editMessage = view.findViewById(R.id.editMessage)
         buttonSend = view.findViewById(R.id.buttonSend)
 
-        // RecyclerView setup
         recyclerMessages.layoutManager = LinearLayoutManager(requireContext())
         chatAdapter = ChatAdapter(mutableListOf())
         recyclerMessages.adapter = chatAdapter
 
-        // Send button click
         buttonSend.setOnClickListener {
             val text = editMessage.text.toString().trim()
             if (text.isNotEmpty()) {
@@ -58,54 +78,71 @@ class ChatView : Fragment() {
             }
         }
 
-        // Start listening for new messages
         listenForMessages()
-        
-        // Set up keyboard detection to scroll to bottom when keyboard appears
         setupKeyboardDetection(view)
+
+        // --- Toolbar title handling ---
+        previousTitle = (activity as AppCompatActivity).supportActionBar?.title
+        (activity as AppCompatActivity).supportActionBar?.title = "Unknown"
+
+        receiverUid?.let { uid ->
+            db.collection("users")
+                .document(uid)
+                .get()
+                .addOnSuccessListener { doc ->
+                    val fullName = doc.getString("first") ?: "Unknown"
+
+                    //shortens the name
+                    val displayName = if (fullName.length > 10) fullName.take(10) + "…" else fullName
+                    (activity as AppCompatActivity).supportActionBar?.title = displayName
+                }
+                .addOnFailureListener { e ->
+                    Log.w("ChatView", "Could not load receiver name", e)
+                }
+        }
 
         return view
     }
 
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        receiverUid = arguments?.getString("receiverUid")
+    override fun onDestroyView() {
+        super.onDestroyView()
+        // Restore previous toolbar title when leaving this fragment
+        (activity as AppCompatActivity).supportActionBar?.title = previousTitle
     }
 
-    override fun onResume() {
-        super.onResume()
-        // Ensure proper layout when fragment resumes
-        view?.post {
-            if (chatAdapter.itemCount > 0) {
-                recyclerMessages.scrollToPosition(chatAdapter.itemCount - 1)
-            }
-        }
-    }
-
-    // Send a message to Firestore
+    // Send message to Firestore
     private fun sendMessage(text: String) {
+        if (chatRoomId == null || senderUid == null || receiverUid == null) {
+            Log.w("ChatView", "Missing chatRoomId, senderUid or receiverUid")
+            return
+        }
+
         val message = hashMapOf(
             "text" to text,
-            "sender" to uid,
+            "sender" to senderUid,
+            "receiver" to receiverUid,
+            "senderName" to currentName,
             "timestamp" to System.currentTimeMillis()
         )
 
         db.collection("chats")
-            .document(chatRoomId)
+            .document(chatRoomId!!)
             .collection("messages")
             .add(message)
             .addOnSuccessListener {
-                Log.d("ChatView", "Message sent!")
+                Log.d("ChatView", "Message sent to room: $chatRoomId")
             }
             .addOnFailureListener { e ->
                 Log.w("ChatView", "Error sending message", e)
             }
     }
 
-    // Listen in real-time for new messages
+    // Listen in real-time for messages between these 2 users
     private fun listenForMessages() {
+        if (chatRoomId == null) return
+
         db.collection("chats")
-            .document(chatRoomId)
+            .document(chatRoomId!!)
             .collection("messages")
             .orderBy("timestamp")
             .addSnapshotListener { snapshots, e ->
@@ -114,69 +151,40 @@ class ChatView : Fragment() {
                     return@addSnapshotListener
                 }
 
-                if (snapshots != null) {
-                    for (docChange in snapshots.documentChanges) {
-                        if (docChange.type == DocumentChange.Type.ADDED) {
-                            val message = docChange.document.toObject(ChatMessage::class.java)
-                            chatAdapter.addMessage(message)
-                            recyclerMessages.scrollToPosition(chatAdapter.itemCount - 1)
-                        }
+                snapshots?.documentChanges?.forEach { docChange ->
+                    if (docChange.type == DocumentChange.Type.ADDED) {
+                        val message = docChange.document.toObject(ChatMessage::class.java)
+                        chatAdapter.addMessage(message)
+                        recyclerMessages.scrollToPosition(chatAdapter.itemCount - 1)
                     }
                 }
             }
     }
-    
-    // Set up keyboard detection to ensure input field is visible
+
+    // Scrolls when keyboard appears
     private fun setupKeyboardDetection(rootView: View) {
         val activityRootView = requireActivity().findViewById<View>(android.R.id.content)
-        
+
         activityRootView.viewTreeObserver.addOnGlobalLayoutListener(object : ViewTreeObserver.OnGlobalLayoutListener {
             override fun onGlobalLayout() {
                 val heightDiff = activityRootView.rootView.height - activityRootView.height
                 val isKeyboardOpen = heightDiff > activityRootView.rootView.height * 0.15
 
                 if (isKeyboardOpen && !isKeyboardShowing) {
-                    // Keyboard opened
                     isKeyboardShowing = true
-                    // Scroll to bottom to show the latest message and input field
                     recyclerMessages.post {
-                        if (chatAdapter.itemCount > 0) {
+                        if (chatAdapter.itemCount > 0)
                             recyclerMessages.scrollToPosition(chatAdapter.itemCount - 1)
-                        }
-                        // Ensure the EditText is visible
-                        editMessage.post {
-                            editMessage.requestFocus()
-                        }
                     }
                 } else if (!isKeyboardOpen && isKeyboardShowing) {
-                    // Keyboard closed
                     isKeyboardShowing = false
                 }
             }
         })
-
-        // When user focuses on the input field, scroll to bottom
-        editMessage.setOnFocusChangeListener { _, hasFocus ->
-            if (hasFocus) {
-                recyclerMessages.post {
-                    if (chatAdapter.itemCount > 0) {
-                        recyclerMessages.scrollToPosition(chatAdapter.itemCount - 1)
-                    }
-                }
-            }
-        }
-        
-        // Additional handling for when EditText is touched
-        editMessage.setOnClickListener {
-            recyclerMessages.post {
-                if (chatAdapter.itemCount > 0) {
-                    recyclerMessages.scrollToPosition(chatAdapter.itemCount - 1)
-                }
-            }
-        }
     }
 }
 
+// Generates a unique chatRoom ID for any two users
 fun getChatRoomId(user1: String, user2: String): String {
     return if (user1 < user2) "${user1}_${user2}" else "${user2}_${user1}"
 }

@@ -12,6 +12,7 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.example.basicchatapp.databinding.FragmentFirstBinding
 import com.google.firebase.Firebase
+import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.firestore
 
 class FirstFragment : Fragment() {
@@ -21,6 +22,7 @@ class FirstFragment : Fragment() {
     private val users = mutableListOf<User>()
 
     private val db = Firebase.firestore
+    private val currentUser = FirebaseAuth.getInstance().currentUser
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -54,7 +56,10 @@ class FirstFragment : Fragment() {
                 users.clear()
                 for (doc in result) {
                     val user = doc.toObject(User::class.java)
-                    users.add(user)
+
+                    if (user.uid != currentUser?.uid) {
+                        users.add(user)
+                    }
                 }
                 userAdapter.notifyDataSetChanged()
             }
