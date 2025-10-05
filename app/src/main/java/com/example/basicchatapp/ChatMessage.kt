@@ -5,5 +5,6 @@ data class ChatMessage(
     val sender: String = "",
     val receiver: String = "",
     var senderName: String = "",
+    val imageUrl: String? = null,
     val timestamp: Long = 0
 )

@@ -3,11 +3,14 @@ package com.example.basicchatapp
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.ImageView
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
 import com.google.firebase.auth.FirebaseAuth
 import java.text.SimpleDateFormat
 import java.util.*
+import com.bumptech.glide.Glide
+
 
 class ChatAdapter(val messages: MutableList<ChatMessage>) :
     RecyclerView.Adapter<RecyclerView.ViewHolder>() {
@@ -21,12 +24,14 @@ class ChatAdapter(val messages: MutableList<ChatMessage>) :
         val textSenderName: TextView = itemView.findViewById(R.id.textSenderNameSent)
         val textMessage: TextView = itemView.findViewById(R.id.textMessageSent)
         val textTimestamp: TextView = itemView.findViewById(R.id.textTimestampSent)
+        val imageMessage: ImageView = itemView.findViewById(R.id.imageMessageSent)
     }
 
     inner class ReceivedMessageViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         val textSenderName: TextView = itemView.findViewById(R.id.textSenderNameReceived)
         val textMessage: TextView = itemView.findViewById(R.id.textMessageReceived)
         val textTimestamp: TextView = itemView.findViewById(R.id.textTimestampReceived)
+        val imageMessage: ImageView = itemView.findViewById(R.id.imageMessageReceived)
     }
 
     override fun getItemViewType(position: Int): Int {
@@ -49,19 +54,52 @@ class ChatAdapter(val messages: MutableList<ChatMessage>) :
     override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
         val message = messages[position]
         val formattedTime = timeFormatter.format(Date(message.timestamp))
-        val name = message.senderName?.let { shortenName(it) } ?:
-        if (message.sender == currentUserUid) "You" else "Unknown"
+        val name = message.senderName?.let { shortenName(it) }
+            ?: if (message.sender == currentUserUid) "You" else "Unknown"
 
-        if (holder is SentMessageViewHolder) {
-            holder.textSenderName.text = name
-            holder.textMessage.text = message.text
-            holder.textTimestamp.text = formattedTime
-        } else if (holder is ReceivedMessageViewHolder) {
-            holder.textSenderName.text = name
-            holder.textMessage.text = message.text
-            holder.textTimestamp.text = formattedTime
+        when (holder) {
+            is SentMessageViewHolder -> {
+                holder.textSenderName.text = name
+                holder.textTimestamp.text = formattedTime
+
+                if (!message.imageUrl.isNullOrEmpty()) {
+                    // Show image message
+                    holder.imageMessage.visibility = View.VISIBLE
+                    holder.textMessage.visibility = View.GONE
+
+                    Glide.with(holder.itemView.context)
+                        .load(message.imageUrl)
+                        .centerCrop()
+                        .into(holder.imageMessage)
+                } else {
+                    // Show text message
+                    holder.imageMessage.visibility = View.GONE
+                    holder.textMessage.visibility = View.VISIBLE
+                    holder.textMessage.text = message.text
+                }
+            }
+
+            is ReceivedMessageViewHolder -> {
+                holder.textSenderName.text = name
+                holder.textTimestamp.text = formattedTime
+
+                if (!message.imageUrl.isNullOrEmpty()) {
+                    holder.imageMessage.visibility = View.VISIBLE
+                    holder.textMessage.visibility = View.GONE
+
+                    Glide.with(holder.itemView.context)
+                        .load(message.imageUrl)
+                        .centerCrop()
+                        .into(holder.imageMessage)
+                } else {
+                    holder.imageMessage.visibility = View.GONE
+                    holder.textMessage.visibility = View.VISIBLE
+                    holder.textMessage.text = message.text
+                }
+            }
         }
     }
+
 
     override fun getItemCount(): Int = messages.size
 
