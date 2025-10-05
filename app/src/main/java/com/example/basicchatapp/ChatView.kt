@@ -96,7 +96,7 @@ class ChatView : Fragment() {
 
         // Toolbar title handling (this was for testing)
         previousTitle = (activity as AppCompatActivity).supportActionBar?.title
-        (activity as AppCompatActivity).supportActionBar?.title = "Unknown"
+        (activity as AppCompatActivity).supportActionBar?.title = ""
 
         receiverUid?.let { uid ->
             db.collection("users").document(uid)
