@@ -1,10 +1,12 @@
 package com.example.basicchatapp
 
+import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageView
 import android.widget.TextView
+import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.RecyclerView
 import com.google.firebase.auth.FirebaseAuth
 import java.text.SimpleDateFormat
@@ -71,6 +73,20 @@ class ChatAdapter(val messages: MutableList<ChatMessage>) :
                         .load(message.imageUrl)
                         .centerCrop()
                         .into(holder.imageMessage)
+
+                    // Tap to open fullscreen preview
+                    holder.imageMessage.setOnClickListener {
+                        val context = holder.itemView.context
+                        if (context is AppCompatActivity) {
+                            val dialogFragment = ImagePreviewFragment().apply {
+                                arguments = Bundle().apply {
+                                    putString("imageUrl", message.imageUrl)
+                                }
+                            }
+                            dialogFragment.show(context.supportFragmentManager, "ImagePreview")
+                        }
+                    }
+
                 } else {
                     // Show text message
                     holder.imageMessage.visibility = View.GONE
@@ -91,6 +107,20 @@ class ChatAdapter(val messages: MutableList<ChatMessage>) :
                         .load(message.imageUrl)
                         .centerCrop()
                         .into(holder.imageMessage)
+
+                    // Tap to open fullscreen preview
+                    holder.imageMessage.setOnClickListener {
+                        val context = holder.itemView.context
+                        if (context is AppCompatActivity) {
+                            val dialogFragment = ImagePreviewFragment().apply {
+                                arguments = Bundle().apply {
+                                    putString("imageUrl", message.imageUrl)
+                                }
+                            }
+                            dialogFragment.show(context.supportFragmentManager, "ImagePreview")
+                        }
+                    }
+
                 } else {
                     holder.imageMessage.visibility = View.GONE
                     holder.textMessage.visibility = View.VISIBLE
@@ -99,6 +129,7 @@ class ChatAdapter(val messages: MutableList<ChatMessage>) :
             }
         }
     }
+
 
 
     override fun getItemCount(): Int = messages.size
