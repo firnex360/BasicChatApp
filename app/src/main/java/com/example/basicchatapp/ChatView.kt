@@ -42,7 +42,7 @@ class ChatView : Fragment() {
     private var isKeyboardShowing = false
     private var previousTitle: CharSequence? = null
 
-    // 🔹 Activity Result Launcher for image picking
+    // Activity Result Launcher for image picking
     private val pickImageLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         if (result.resultCode == Activity.RESULT_OK) {
             val imageUri = result.data?.data
@@ -86,7 +86,7 @@ class ChatView : Fragment() {
             }
         }
 
-        // 📎 Open gallery when pressing attach button
+        // Open gallery when pressing attach button
         buttonAttach.setOnClickListener {
             openImagePicker()
         }
@@ -94,7 +94,7 @@ class ChatView : Fragment() {
         listenForMessages()
         setupKeyboardDetection(view)
 
-        // Toolbar title handling
+        // Toolbar title handling (this was for testing)
         previousTitle = (activity as AppCompatActivity).supportActionBar?.title
         (activity as AppCompatActivity).supportActionBar?.title = "Unknown"
 
@@ -116,10 +116,10 @@ class ChatView : Fragment() {
 
     override fun onDestroyView() {
         super.onDestroyView()
-        (activity as AppCompatActivity).supportActionBar?.title = previousTitle
+        (activity as AppCompatActivity).supportActionBar?.title = "Chats"
     }
 
-    // ✉️ Send a message (text only)
+    // Send a message (text only)
     private fun sendMessage(text: String, imageUrl: String? = null) {
         if (chatRoomId == null || senderUid == null || receiverUid == null) {
             Log.w("ChatView", "Missing chatRoomId, senderUid or receiverUid")
@@ -147,7 +147,7 @@ class ChatView : Fragment() {
             }
     }
 
-    // 🔹 Image Picker
+    // Image Picker
     private fun openImagePicker() {
         val intent = Intent(Intent.ACTION_PICK).apply {
             type = "image/*"
@@ -155,7 +155,7 @@ class ChatView : Fragment() {
         pickImageLauncher.launch(intent)
     }
 
-    // 🔹 Upload to Firebase Storage
+    // Upload to Firebase Storage
     private fun uploadImageToStorage(imageUri: Uri) {
         if (senderUid == null || receiverUid == null) return
 

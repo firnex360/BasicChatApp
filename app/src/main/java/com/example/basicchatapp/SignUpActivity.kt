@@ -37,10 +37,12 @@ class SignUpActivity : AppCompatActivity() {
         firebaseAuth = FirebaseAuth.getInstance()
 
         binding.button.setOnClickListener {
-            val email = binding.username.text.toString()
+            val email = binding.email.text.toString()
             val password = binding.password.text.toString()
+            val userName = binding.userName.text.toString()
 
-            if(email.isNotEmpty() && password.isNotEmpty()){
+
+            if(email.isNotEmpty() && password.isNotEmpty() && userName.isNotEmpty()){
                 firebaseAuth.createUserWithEmailAndPassword(email, password).addOnCompleteListener{
                     if(it.isSuccessful){
                         val intent = Intent(this, SignInActivity::class.java)
@@ -51,7 +53,7 @@ class SignUpActivity : AppCompatActivity() {
                         if (currentUser != null) {
                             val user = hashMapOf(
                                 "uid" to currentUser.uid,
-                                "first" to (currentUser.displayName ?: currentUser.email),
+                                "first" to (userName ?: currentUser.email),
                                 "email" to currentUser.email
                             )
                             db.collection("users").document(currentUser.uid).set(user)
