@@ -1,8 +1,14 @@
 package com.example.basicchatapp
 
+import android.Manifest
 import android.content.DialogInterface
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
+import android.util.Log
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
 import com.google.android.material.snackbar.Snackbar
 import androidx.appcompat.app.AppCompatActivity
 import androidx.navigation.findNavController
@@ -15,12 +21,24 @@ import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import com.example.basicchatapp.databinding.ActivityMainBinding
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.messaging.FirebaseMessaging
 
 class MainActivity : AppCompatActivity() {
 
     private lateinit var appBarConfiguration: AppBarConfiguration
     private lateinit var binding: ActivityMainBinding
     private lateinit var firebaseAuth: FirebaseAuth
+
+    private val requestPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted: Boolean ->
+        if (isGranted) {
+            Log.d("FCM", "Notification permission granted")
+        } else {
+            Log.d("FCM", "Notification permission denied")
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -35,6 +53,12 @@ class MainActivity : AppCompatActivity() {
         val navController = findNavController(R.id.nav_host_fragment_content_main)
         appBarConfiguration = AppBarConfiguration(navController.graph)
         setupActionBarWithNavController(navController, appBarConfiguration)
+
+        // Request notification permission for Android 13+
+        requestNotificationPermission()
+
+        // Initialize FCM token
+        initializeFCMToken()
 
 //        binding.fab.setOnClickListener { view ->
 //            Snackbar.make(view, "Replace with your own action", Snackbar.LENGTH_LONG)
@@ -83,6 +107,52 @@ class MainActivity : AppCompatActivity() {
             dialog.dismiss()
         }
         builder.create().show()
+    }
+
+    private fun initializeFCMToken() {
+        FirebaseMessaging.getInstance().token.addOnCompleteListener { task ->
+            if (!task.isSuccessful) {
+                Log.w("FCM", "Fetching FCM registration token failed", task.exception)
+                return@addOnCompleteListener
+            }
+
+            // Get new FCM registration token
+            val token = task.result
+            Log.d("FCM", "FCM Registration Token: $token")
+
+            // Store token in Firestore
+            storeFCMToken(token)
+        }
+    }
+
+    private fun storeFCMToken(token: String) {
+        val currentUser = firebaseAuth.currentUser
+        if (currentUser != null) {
+            val userRef = FirebaseFirestore.getInstance()
+                .collection("users")
+                .document(currentUser.uid)
+
+            userRef.update("fcmToken", token)
+                .addOnSuccessListener {
+                    Log.d("FCM", "FCM token stored successfully")
+                }
+                .addOnFailureListener { e ->
+                    Log.w("FCM", "Error storing FCM token", e)
+                }
+        }
+    }
+
+    private fun requestNotificationPermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) ==
+                PackageManager.PERMISSION_GRANTED
+            ) {
+                Log.d("FCM", "Notification permission already granted")
+            } else {
+                // Request permission
+                requestPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+            }
+        }
     }
 
 }
