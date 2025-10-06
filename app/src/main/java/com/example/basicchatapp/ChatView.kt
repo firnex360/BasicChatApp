@@ -37,7 +37,7 @@ class ChatView : Fragment() {
 
     private var receiverUid: String? = null
     private var chatRoomId: String? = null
-    private val currentName = currentUser?.displayName ?: "You"
+    private var currentName = "You" // Will be loaded from Firestore
 
     private var isKeyboardShowing = false
     private var previousTitle: CharSequence? = null
@@ -93,6 +93,7 @@ class ChatView : Fragment() {
 
         listenForMessages()
         setupKeyboardDetection(view)
+        loadCurrentUserName()
 
         // Toolbar title handling (this was for testing)
         previousTitle = (activity as AppCompatActivity).supportActionBar?.title
@@ -220,6 +221,25 @@ class ChatView : Fragment() {
                 }
             }
         })
+    }
+
+    private fun loadCurrentUserName() {
+        senderUid?.let { uid ->
+            db.collection("users").document(uid)
+                .get()
+                .addOnSuccessListener { document ->
+                    if (document.exists()) {
+                        val firstName = document.getString("first")
+                        if (!firstName.isNullOrEmpty()) {
+                            currentName = firstName
+                            Log.d("ChatView", "✅ Loaded current user name: $currentName")
+                        }
+                    }
+                }
+                .addOnFailureListener { e ->
+                    Log.w("ChatView", "❌ Error loading current user name", e)
+                }
+        }
     }
 }
 
