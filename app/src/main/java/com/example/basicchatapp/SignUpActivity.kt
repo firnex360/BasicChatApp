@@ -53,10 +53,17 @@ class SignUpActivity : AppCompatActivity() {
                         if (currentUser != null) {
                             val user = hashMapOf(
                                 "uid" to currentUser.uid,
-                                "first" to (userName ?: currentUser.email),
-                                "email" to currentUser.email
+                                "first" to (userName.ifEmpty { currentUser.email?.split("@")?.get(0) ?: "Unknown" }),
+                                "email" to currentUser.email,
+                                "fcmToken" to "" // Initialize empty, will be set when user opens MainActivity
                             )
                             db.collection("users").document(currentUser.uid).set(user)
+                                .addOnSuccessListener {
+                                    Toast.makeText(this, "Account created successfully!", Toast.LENGTH_SHORT).show()
+                                }
+                                .addOnFailureListener { e ->
+                                    Toast.makeText(this, "Error creating user profile: ${e.message}", Toast.LENGTH_SHORT).show()
+                                }
                         }
 
                     }else{

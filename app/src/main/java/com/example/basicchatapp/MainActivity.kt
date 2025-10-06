@@ -78,6 +78,10 @@ class MainActivity : AppCompatActivity() {
         // automatically handle clicks on the Home/Up button, so long
         // as you specify a parent activity in AndroidManifest.xml.
         return when (item.itemId) {
+            R.id.action_test_fcm -> {
+                testFCMSetup()
+                true
+            }
             R.id.action_logout -> {
                 showLogoutDialog()
                 true
@@ -153,6 +157,51 @@ class MainActivity : AppCompatActivity() {
                 requestPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
             }
         }
+    }
+
+    private fun testFCMSetup() {
+        val currentUser = firebaseAuth.currentUser
+        if (currentUser == null) {
+            Toast.makeText(this, "No user logged in", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        // Check if user document exists and has FCM token
+        FirebaseFirestore.getInstance()
+            .collection("users")
+            .document(currentUser.uid)
+            .get()
+            .addOnSuccessListener { document ->
+                if (document.exists()) {
+                    val fcmToken = document.getString("fcmToken")
+                    val message = if (fcmToken.isNullOrEmpty()) {
+                        "❌ User document exists but no FCM token found"
+                    } else {
+                        "✅ User document and FCM token found!\nToken: ${fcmToken.take(20)}..."
+                    }
+                    
+                    // Also log current FCM token
+                    FirebaseMessaging.getInstance().token.addOnCompleteListener { task ->
+                        if (task.isSuccessful) {
+                            val currentToken = task.result
+                            Log.d("FCM_DEBUG", "Current FCM token: $currentToken")
+                            Log.d("FCM_DEBUG", "Stored FCM token: $fcmToken")
+                            Log.d("FCM_DEBUG", "Tokens match: ${currentToken == fcmToken}")
+                        }
+                    }
+                    
+                    AlertDialog.Builder(this)
+                        .setTitle("FCM Debug Info")
+                        .setMessage(message)
+                        .setPositiveButton("OK", null)
+                        .show()
+                } else {
+                    Toast.makeText(this, "❌ User document not found", Toast.LENGTH_LONG).show()
+                }
+            }
+            .addOnFailureListener { e ->
+                Toast.makeText(this, "Error checking user document: ${e.message}", Toast.LENGTH_LONG).show()
+            }
     }
 
 }
