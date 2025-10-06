@@ -9,6 +9,7 @@ import android.os.Bundle
 import android.util.Log
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
+import androidx.navigation.findNavController
 import com.google.android.material.snackbar.Snackbar
 import androidx.appcompat.app.AppCompatActivity
 import androidx.navigation.findNavController
@@ -60,11 +61,20 @@ class MainActivity : AppCompatActivity() {
         // Initialize FCM token
         initializeFCMToken()
 
+        // Handle notification navigation
+        handleNotificationIntent(intent)
+
 //        binding.fab.setOnClickListener { view ->
 //            Snackbar.make(view, "Replace with your own action", Snackbar.LENGTH_LONG)
 //                .setAction("Action", null)
 //                .setAnchorView(R.id.fab).show()
 //        }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        // Handle notification tap when app is already running
+        handleNotificationIntent(intent)
     }
 
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
@@ -202,6 +212,47 @@ class MainActivity : AppCompatActivity() {
             .addOnFailureListener { e ->
                 Toast.makeText(this, "Error checking user document: ${e.message}", Toast.LENGTH_LONG).show()
             }
+    }
+
+    private fun handleNotificationIntent(intent: Intent?) {
+        if (intent == null) return
+        
+        val action = intent.getStringExtra("action")
+        Log.d("MainActivity", "Handling notification intent with action: $action")
+        
+        if (action == "open_chat") {
+            val receiverUid = intent.getStringExtra("receiverUid")
+            val senderName = intent.getStringExtra("senderName")
+            
+            Log.d("MainActivity", "Opening chat with receiverUid: $receiverUid, senderName: $senderName")
+            
+            if (!receiverUid.isNullOrEmpty()) {
+                // Navigate to the chat
+                val navController = findNavController(R.id.nav_host_fragment_content_main)
+                
+                // Create bundle with the receiver UID
+                val bundle = Bundle().apply {
+                    putString("receiverUid", receiverUid)
+                }
+                
+                try {
+                    // Navigate to ChatView
+                    navController.navigate(R.id.action_FirstFragment_to_ChatView, bundle)
+                    Log.d("MainActivity", "✅ Navigation to chat successful")
+                } catch (e: Exception) {
+                    Log.e("MainActivity", "❌ Navigation failed", e)
+                    
+                    // If direct navigation fails, try navigating to FirstFragment first
+                    try {
+                        navController.popBackStack(R.id.FirstFragment, false)
+                        navController.navigate(R.id.action_FirstFragment_to_ChatView, bundle)
+                        Log.d("MainActivity", "✅ Navigation after popBackStack successful")
+                    } catch (e2: Exception) {
+                        Log.e("MainActivity", "❌ Fallback navigation also failed", e2)
+                    }
+                }
+            }
+        }
     }
 
 }

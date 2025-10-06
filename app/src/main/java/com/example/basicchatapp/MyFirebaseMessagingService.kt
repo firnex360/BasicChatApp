@@ -34,7 +34,21 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
         // Check if message contains a notification payload
         remoteMessage.notification?.let {
             Log.d(TAG, "Message Notification Body: ${it.body}")
-            sendNotification(it.title ?: "New Message", it.body ?: "You have a new message")
+            
+            // Extract navigation data from the data payload
+            val senderUid = remoteMessage.data["senderUid"] ?: ""
+            val senderName = remoteMessage.data["senderName"] ?: "Someone"
+            val action = remoteMessage.data["action"] ?: ""
+            
+            Log.d(TAG, "Navigation data - Sender: $senderUid, Action: $action")
+            
+            sendNotification(
+                title = it.title ?: "New Message", 
+                messageBody = it.body ?: "You have a new message",
+                senderUid = senderUid,
+                senderName = senderName,
+                action = action
+            )
         }
     }
 
@@ -63,11 +77,29 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
         }
     }
 
-    private fun sendNotification(title: String, messageBody: String) {
-        val intent = Intent(this, MainActivity::class.java)
-        intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
+    private fun sendNotification(
+        title: String, 
+        messageBody: String, 
+        senderUid: String = "", 
+        senderName: String = "", 
+        action: String = ""
+    ) {
+        val intent = Intent(this, MainActivity::class.java).apply {
+            addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_NEW_TASK)
+            
+            // Add navigation data to the intent
+            if (action == "open_chat" && senderUid.isNotEmpty()) {
+                putExtra("action", "open_chat")
+                putExtra("receiverUid", senderUid)
+                putExtra("senderName", senderName)
+                Log.d(TAG, "Adding navigation data to intent - receiverUid: $senderUid")
+            }
+        }
+        
         val pendingIntent = PendingIntent.getActivity(
-            this, 0, intent,
+            this, 
+            System.currentTimeMillis().toInt(), // Use unique request code
+            intent,
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
 

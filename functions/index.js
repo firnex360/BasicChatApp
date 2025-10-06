@@ -82,8 +82,10 @@ exports.sendChatNotification = functions.firestore
           data: {
             chatRoomId: context.params.chatRoomId,
             senderUid: message.sender || "",
+            senderName: senderName,
             receiverUid: receiverUid,
             messageType: "chat",
+            action: "open_chat",
           },
           android: {
             notification: {
